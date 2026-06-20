@@ -1,6 +1,6 @@
 // --- CONFIGURAZIONE WEB APP GOOGLE SHEETS ---
 // Sostituisci questo URL con il link della tua Web App pubblicata tramite Google Apps Script
-const API_URL = "https://script.google.com/macros/s/IL_TUO_ID_SCRIPT/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbx778vC2rPCpLIHB7TnG1nsPUymQeUvKR_uNmfKYG-EzoO5-aTz-qkalxX1UXgObxZDFg/exec";
 
 class CatalogApp {
     constructor() {
