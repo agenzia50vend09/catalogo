@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catalogo Prodotti</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <script>
+        // CONFIGURAZIONE: Incolla qui l'URL ottenuto dal rilascio come Web App di Google Apps Script
+        const API_URL = "https://script.google.com/macros/s/AKfycbxpumEhBPLS_18T-e-JnXDpzGPAxt4W1d58NYaHICjVSWSB3gjU9ShO3E1MIAsEjsoO/exec";
+    </script>
+
+    <!-- NAVBAR PRINCIPALE -->
+    <header class="navbar">
+        <div class="nav-container">
+            <h1 class="logo" onclick="showSection('catalog-view')">Blue<span>Catalog</span></h1>
+            <nav>
+                <button id="btn-nav-catalog" class="active" onclick="showSection('catalog-view')"><i class="fas fa-th-large"></i> Catalogo</button>
+                <button id="btn-nav-admin" onclick="checkAdminSession()"><i class="fas fa-user-shield"></i> Area Admin</button>
+                <button id="btn-logout" class="hidden" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Disconnetti</button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- VISTA CATALOGO PUBBLICO -->
+        <section id="catalog-view" class="view-section">
+            <!-- Barra di Selezione Filtri / Modalità di Vista -->
+            <div class="filter-bar">
+                <button class="filter-btn active" onclick="changeViewMode('brand')">Per Brand</button>
+                <button class="filter-btn" onclick="changeViewMode('all')">Tutto il Catalogo</button>
+                <button class="filter-btn" onclick="changeViewMode('type')">Per Tipo</button>
+                <button class="filter-btn" onclick="changeViewMode('packtype')">Per Confezione (Packtype)</button>
+            </div>
+
+            <!-- Sezione Novità (Sempre in cima ed in evidenza) -->
+            <div id="novita-wrapper" class="catalog-group-section hidden">
+                <h2 class="section-title"><i class="fas fa-star" style="color: #f1c40f;"></i> Prodotti Novità</h2>
+                <div id="novita-container" class="products-grid"></div>
+            </div>
+
+            <!-- Contenitore Principale per i raggruppamenti dinamici -->
+            <div id="catalog-container">
+                <div class="loader"></div>
+            </div>
+        </section>
+
+        <!-- VISTA ACCESSO ADMIN -->
+        <section id="login-view" class="view-section hidden">
+            <div class="login-card">
+                <h2>Accesso Amministratore</h2>
+                <form id="login-form" onsubmit="login(event)">
+                    <div class="form-group">
+                        <label for="username">Username</label>
+                        <input type="text" id="username" autocomplete="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" autocomplete="current-password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Accedi</button>
+                </form>
+                <p id="login-error" class="error-msg hidden">Credenziali non valide. Riprova.</p>
+            </div>
+        </section>
+
+        <!-- VISTA DASHBOARD ADMIN (GESTIONE CRUD) -->
+        <section id="admin-view" class="view-section hidden">
+            <div class="admin-header">
+                <h2>Pannello Gestione Prodotti</h2>
+                <button class="btn btn-primary" onclick="openModal('insert')"><i class="fas fa-plus"></i> Aggiungi Prodotto</button>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Anteprima</th>
+                            <th>Brand</th>
+                            <th>Nome Prodotto</th>
+                            <th>Tipo / Pack</th>
+                            <th>Prezzo</th>
+                            <th>Stato</th>
+                            <th>Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-table-body">
+                        <!-- Righe popolate via JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <!-- MODALE AGGIUNGI / MODIFICA PRODOTTO -->
+    <div id="product-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal()">&times;</span>
+            <h3 id="modal-title">Gestione Prodotto</h3>
+            <form id="product-form" onsubmit="saveProduct(event)">
+                <input type="hidden" id="prod-id">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Brand</label>
+                        <input type="text" id="prod-brand" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Nome</label>
+                        <input type="text" id="prod-nome" required>
+                    </div>
+                    <div class="form-group row-span">
+                        <label>Descrizione</label>
+                        <textarea id="prod-descrizione" rows="3" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Prezzo (€)</label>
+                        <input type="number" step="0.01" id="prod-prezzo" required>
+                    </div>
+                    <div class="form-group">
+                        <label>URL Immagine</label>
+                        <input type="url" id="prod-foto" placeholder="https://example.com/immagine.jpg" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Tipo (Type)</label>
+                        <select id="prod-type" required>
+                            <option value="gum">Gum</option>
+                            <option value="caramella">Caramella</option>
+                            <option value="lollipop">Lollipop</option>
+                            <option value="gommose">Gommose</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Confezione (Packtype)</label>
+                        <select id="prod-packtype" required>
+                            <option value="stick">Stick</option>
+                            <option value="box">Box</option>
+                            <option value="monopezzo">Monopezzo</option>
+                            <option value="lollipop">Lollipop</option>
+                            <option value="busta">Busta</option>
+                        </select>
+                    </div>
+                    <div class="form-group checkbox-group">
+                        <label><input type="checkbox" id="prod-disponibile" checked> Prodotto Disponibile</label>
+                    </div>
+                    <div class="form-group checkbox-group">
+                        <label><input type="checkbox" id="prod-novita"> Imposta come Novità</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Annulla</button>
+                    <button type="submit" class="btn btn-primary">Salva Dati</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
