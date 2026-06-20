@@ -1,300 +1,324 @@
-let productsData = [];
-let currentViewMode = 'brand'; // 'brand', 'all', 'type', 'packtype'
+// --- CONFIGURAZIONE WEB APP GOOGLE SHEETS ---
+// Sostituisci questo URL con il link della tua Web App pubblicata tramite Google Apps Script
+const API_URL = "https://script.google.com/macros/s/IL_TUO_ID_SCRIPT/exec";
 
-document.addEventListener("DOMContentLoaded", () => {
-    loadProducts();
-    if (localStorage.getItem("adminSessionActive") === "true") {
-        document.getElementById("btn-logout").classList.remove("hidden");
-    }
-});
-
-function showSection(sectionId) {
-    document.querySelectorAll('.view-section').forEach(s => s.classList.add('hidden'));
-    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
-    
-    document.getElementById(sectionId).classList.remove('hidden');
-    
-    if (sectionId === 'catalog-view') {
-        document.getElementById('btn-nav-catalog').classList.add('active');
-        renderCatalog();
-    } else if (sectionId === 'admin-view') {
-        document.getElementById('btn-nav-admin').classList.add('active');
-        renderAdminTable();
-    }
-}
-
-async function loadProducts() {
-    try {
-        const response = await fetch(`${API_URL}?action=getProducts`);
-        productsData = await response.json();
-        renderCatalog();
-    } catch (err) {
-        console.error("Errore AJAX:", err);
-        document.getElementById('catalog-container').innerHTML = "<p style='text-align:center; padding:20px; color:#FF4757; font-weight:bold;'>Impossibile caricare i dati del catalogo.</p>";
-    }
-}
-
-function changeViewMode(mode) {
-    currentViewMode = mode;
-    document.querySelectorAll('.filter-btn').forEach(b => {
-        b.classList.remove('active');
-        if(b.getAttribute('onclick').includes(mode)) b.classList.add('active');
-    });
-    renderCatalog();
-}
-
-function renderCatalog() {
-    const container = document.getElementById('catalog-container');
-    const novitaWrapper = document.getElementById('novita-wrapper');
-    const novitaContainer = document.getElementById('novita-container');
-    
-    container.innerHTML = "";
-    novitaContainer.innerHTML = "";
-
-    if (productsData.length === 0) {
-        container.innerHTML = "<div class='loader'></div>";
-        return;
-    }
-
-    // 1. GESTIONE EVIDENZA PRODOTTI NOVITÀ (Sempre in alto)
-    const novitaItems = productsData.filter(p => p.novità && p.disponibile);
-    if (novitaItems.length > 0) {
-        novitaWrapper.classList.remove('hidden');
-        novitaItems.forEach(p => novitaContainer.appendChild(createProductCard(p)));
-    } else {
-        novitaWrapper.classList.add('hidden');
-    }
-
-    // 2. GESTIONE FILTRI ED ELENCHI
-    const activeProducts = productsData.filter(p => p.disponibile);
-
-    if (currentViewMode === 'all') {
-        const section = createGroupSection("Tutto il Catalogo", activeProducts, false);
-        container.appendChild(section);
-    } else {
-        let grouped = {};
-        activeProducts.forEach(p => {
-            let key = p[currentViewMode] || 'Non Specificato';
-            if (!grouped[key]) grouped[key] = [];
-            grouped[key].push(p);
-        });
-
-        for (let groupName in grouped) {
-            const isBrandMode = currentViewMode === 'brand';
-            const section = createGroupSection(groupName, grouped[groupName], isBrandMode);
-            container.appendChild(section);
-        }
-    }
-}
-
-function createProductCard(p) {
-    const card = document.createElement('div');
-    card.className = 'product-card';
-    card.innerHTML = `
-        ${p.novità ? '<span class="card-badge">Novità</span>' : ''}
-        <div class="img-container">
-            <img src="${p.foto || 'https://via.placeholder.com/200'}" alt="${p.nome}" onerror="this.src='https://via.placeholder.com/200'">
-        </div>
-        <div class="card-body">
-            <span class="card-brand">${p.brand}</span>
-            <h4 class="card-title">${p.nome}</h4>
-            <p class="card-desc">${p.descrizione}</p>
-            <div class="card-footer">
-                <span class="card-price">€ ${Number(p.prezzo).toFixed(2)}</span>
-                <div class="card-tags">
-                    <span>${p.type}</span>
-                    <span>${p.packtype}</span>
-                </div>
-            </div>
-        </div>
-    `;
-    return card;
-}
-
-function createGroupSection(title, products, limitToThree) {
-    const section = document.createElement('div');
-    section.className = 'catalog-group-section';
-
-    const header = document.createElement('div');
-    header.className = 'section-title';
-    
-    if (limitToThree) {
-        header.innerHTML = `<h3 class="clickable-brand" onclick="viewFullBrand('${title.replace(/'/g, "\\'")}')">${title}</h3>`;
-    } else {
-        header.innerHTML = `<h3>${title}</h3>`;
-    }
-
-    const grid = document.createElement('div');
-    grid.className = 'products-grid';
-    
-    const displayList = limitToThree ? products.slice(0, 3) : products;
-    displayList.forEach(p => grid.appendChild(createProductCard(p)));
-    
-    section.appendChild(header);
-    section.appendChild(grid);
-    return section;
-}
-
-function viewFullBrand(brandName) {
-    // Forza la vista di tutti i prodotti isolando temporaneamente o mostrando l'intero catalogo per quel brand
-    currentViewMode = 'all';
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    
-    const container = document.getElementById('catalog-container');
-    container.innerHTML = "";
-    
-    const brandProducts = productsData.filter(p => p.brand === brandName && p.disponibile);
-    const section = createGroupSection(`Tutti i prodotti del brand: ${brandName}`, brandProducts, false);
-    container.appendChild(section);
-}
-
-// --- LOGICA AUTENTICAZIONE ---
-
-function checkAdminSession() {
-    if (localStorage.getItem("adminSessionActive") === "true") {
-        showSection('admin-view');
-    } else {
-        showSection('login-view');
-    }
-}
-
-async function login(e) {
-    e.preventDefault();
-    const u = document.getElementById("username").value;
-    const p = document.getElementById("password").value;
-    
-    try {
-        const res = await fetch(`${API_URL}?action=login&username=${encodeURIComponent(u)}&password=${encodeURIComponent(p)}`);
-        const data = await res.json();
+class CatalogApp {
+    constructor() {
+        this.products = [];
+        this.credentials = [];
+        this.currentView = { type: 'home', value: null }; // home, all, brand, type, packtype
         
-        if (data.success) {
-            localStorage.setItem("adminSessionActive", "true");
-            document.getElementById("btn-logout").classList.remove("hidden");
-            document.getElementById("login-form").reset();
-            document.getElementById("login-error").classList.add("hidden");
-            showSection('admin-view');
+        this.init();
+    }
+
+    async init() {
+        this.checkAdminSession();
+        await this.loadDataFromSheets();
+        this.buildFilterMenus();
+        this.render();
+    }
+
+    // Caricamento asincrono centralizzato da Google Fogli
+    async loadDataFromSheets() {
+        try {
+            const response = await fetch(API_URL);
+            const data = await response.json();
+            this.products = data.prodotti || [];
+            this.credentials = data.credenziali || [];
+        } catch (error) {
+            console.error("Errore nel caricamento dati da Google Sheets:", error);
+            alert("Impossibile connettersi al database di Google Fogli. Verranno usati dati locali simulati.");
+            this.loadMockData(); // Backup nel caso lo script non sia configurato
+        }
+    }
+
+    // Sincronizzazione con il database di Google Fogli (Invia modifiche)
+    async syncWithSheets(action, payload) {
+        try {
+            const response = await fetch(API_URL, {
+                method: "POST",
+                mode: "no-cors", // Necessario per le restrizioni CORS delle Web App di Google
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action, data: payload })
+            });
+            // Dal momento che usiamo 'no-cors', dobbiamo riaggiornare la view locale dei dati
+            await this.loadDataFromSheets();
+            this.render();
+        } catch (error) {
+            console.error("Errore di sincronizzazione:", error);
+        }
+    }
+
+    // Controllo se la sessione admin è salvata in localStorage
+    checkAdminSession() {
+        const isAdmin = localStorage.getItem('isAdminSession');
+        const adminPanel = document.getElementById('admin-panel');
+        const adminGateBtn = document.getElementById('btn-admin-gate');
+
+        if (isAdmin === 'true') {
+            adminPanel.classList.remove('hidden');
+            adminGateBtn.innerHTML = '<i class="fa-solid fa-unlock"></i> Pannello Aperto';
+            this.renderAdminTable();
         } else {
-            document.getElementById("login-error").classList.remove("hidden");
-        }
-    } catch (err) {
-        alert("Errore di rete durante l'autenticazione.");
-    }
-}
-
-function logout() {
-    localStorage.removeItem("adminSessionActive");
-    document.getElementById("btn-logout").classList.add("hidden");
-    showSection('catalog-view');
-}
-
-// --- CRUDS INTERFACCIA TABELLA ---
-
-function renderAdminTable() {
-    const tbody = document.getElementById('admin-table-body');
-    tbody.innerHTML = "";
-    
-    productsData.forEach(p => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td><img src="${p.foto}" class="admin-img" onerror="this.src='https://via.placeholder.com/50'"></td>
-            <td><strong>${p.brand}</strong></td>
-            <td>${p.nome}</td>
-            <td><small>${p.type} / ${p.packtype}</small></td>
-            <td><strong>€ ${Number(p.prezzo).toFixed(2)}</strong></td>
-            <td>
-                <span style="color: ${p.disponibile ? '#2ED573' : '#FF4757'}; font-weight: bold;">
-                    ${p.disponibile ? 'Visibile' : 'Nascosto'}
-                </span>
-                ${p.novità ? '<br><span style="background:#FEF2F2;color:#D97706;font-size:10px;padding:1px 4px;border-radius:3px;font-weight:700;">NOVITÀ</span>' : ''}
-            </td>
-            <td>
-                <button class="btn btn-secondary" style="padding:6px 10px;" onclick="openModal('update', ${p.id})"><i class="fas fa-edit"></i></button>
-                <button class="btn btn-primary" style="padding:6px 10px; background:#FF4757;" onclick="deleteProduct(${p.id})"><i class="fas fa-trash"></i></button>
-            </td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
-
-function openModal(mode, id = null) {
-    const modal = document.getElementById('product-modal');
-    document.getElementById('product-form').reset();
-    document.getElementById('prod-id').value = "";
-    
-    if (mode === 'insert') {
-        document.getElementById('modal-title').innerText = "Aggiungi Nuovo Prodotto";
-    } else if (mode === 'update') {
-        document.getElementById('modal-title').innerText = "Modifica Prodotto Esistente";
-        const p = productsData.find(item => item.id == id);
-        if (p) {
-            document.getElementById('prod-id').value = p.id;
-            document.getElementById('prod-brand').value = p.brand;
-            document.getElementById('prod-nome').value = p.nome;
-            document.getElementById('prod-descrizione').value = p.descrizione;
-            document.getElementById('prod-prezzo').value = p.prezzo;
-            document.getElementById('prod-foto').value = p.foto;
-            document.getElementById('prod-type').value = p.type;
-            document.getElementById('prod-packtype').value = p.packtype;
-            document.getElementById('prod-disponibile').checked = p.disponibile;
-            document.getElementById('prod-novita').checked = p.novità;
+            adminPanel.classList.add('hidden');
+            adminGateBtn.innerHTML = '<i class="fa-solid fa-lock"></i> Admin';
         }
     }
-    modal.classList.remove('hidden');
-}
 
-function closeModal() {
-    document.getElementById('product-modal').classList.add('hidden');
-}
+    // Gestione Gestione Login Admin
+    toggleAdminModal(show) {
+        document.getElementById('login-modal').style.display = show ? 'flex' : 'none';
+    }
 
-async function saveProduct(e) {
-    e.preventDefault();
-    const id = document.getElementById('prod-id').value;
-    
-    const payload = {
-        action: id ? 'update' : 'insert',
-        id: id || undefined,
-        brand: document.getElementById('prod-brand').value,
-        nome: document.getElementById('prod-nome').value,
-        descrizione: document.getElementById('prod-descrizione').value,
-        prezzo: parseFloat(document.getElementById('prod-prezzo').value),
-        foto: document.getElementById('prod-foto').value,
-        type: document.getElementById('prod-type').value,
-        packtype: document.getElementById('prod-packtype').value,
-        disponibile: document.getElementById('prod-disponibile').checked,
-        novità: document.getElementById('prod-novita').checked
-    };
+    handleLogin(e) {
+        e.preventDefault();
+        const userIn = document.getElementById('username').value;
+        const passIn = document.getElementById('password').value;
 
-    try {
-        const res = await fetch(API_URL, {
-            method: 'POST',
-            body: JSON.stringify(payload)
+        const valid = this.credentials.some(c => c.username === userIn && c.password === passIn);
+
+        if (valid) {
+            localStorage.setItem('isAdminSession', 'true');
+            this.toggleAdminModal(false);
+            this.checkAdminSession();
+            document.getElementById('login-form').reset();
+        } else {
+            alert("Credenziali non valide. Riprova.");
+        }
+    }
+
+    handleLogout() {
+        localStorage.removeItem('isAdminSession');
+        this.checkAdminSession();
+    }
+
+    // Costruzione dinamica dei sottomenu filtri in base ai valori ammessi
+    buildFilterMenus() {
+        const types = ['gum', 'caramella', 'lollipop', 'gommose'];
+        const packtypes = ['stick', 'box', 'monopezzo', 'lollipop', 'busta'];
+
+        const typeContainer = document.getElementById('dropdown-type');
+        typeContainer.innerHTML = types.map(t => `<a href="#" onclick="app.setFilter('type', '${t}')">${t}</a>`).join('');
+
+        const packContainer = document.getElementById('dropdown-packtype');
+        packContainer.innerHTML = packtypes.map(p => `<a href="#" onclick="app.setFilter('packtype', '${p}')">${p}</a>`).join('');
+    }
+
+    setFilter(filterType, value) {
+        this.currentView = { type: filterType, value: value };
+        this.render();
+    }
+
+    viewAllProducts() {
+        this.currentView = { type: 'all', value: null };
+        this.render();
+    }
+
+    renderCatalog() {
+        this.currentView = { type: 'home', value: null };
+        this.render();
+    }
+
+    // --- RENDERING DELLA SEZIONE CATALOGO UTENTE ---
+    render() {
+        const container = document.getElementById('main-content');
+        container.innerHTML = ''; // Svuota contenitore
+
+        // 1. Sempre in evidenza in alto: NOVITA (Se siamo nella Homepage standard)
+        if (this.currentView.type === 'home') {
+            const novitaProducts = this.products.filter(p => String(p.novita) === 'true');
+            if (novitaProducts.length > 0) {
+                container.appendChild(this.createSectionHeading("✨ Novità In Evidenza"));
+                container.appendChild(this.createGrid(novitaProducts));
+            }
+
+            // Sezione per ogni Brand con massimo 3 prodotti ciascuno
+            const brands = [...new Set(this.products.map(p => p.brand))];
+            brands.forEach(brand => {
+                const brandProducts = this.products.filter(p => p.brand === brand).slice(0, 3);
+                
+                const headingEl = document.createElement('h2');
+                headingEl.className = 'section-title';
+                headingEl.innerHTML = `<span class="brand-title" onclick="app.setFilter('brand', '${brand}')">${brand} &raquo;</span>`;
+                
+                container.appendChild(headingEl);
+                container.appendChild(this.createGrid(brandProducts));
+            });
+        } 
+        // Viste filtrate (Tutto, Per Brand intero, Per Categoria, Per Packaging)
+        else {
+            let filteredList = [];
+            let titleText = "";
+
+            switch(this.currentView.type) {
+                case 'all':
+                    filteredList = this.products;
+                    titleText = "Tutto il Catalogo Prodotti";
+                    break;
+                case 'brand':
+                    filteredList = this.products.filter(p => p.brand === this.currentView.value);
+                    titleText = `Prodotti del Brand: ${this.currentView.value}`;
+                    break;
+                case 'type':
+                    filteredList = this.products.filter(p => p.type === this.currentView.value);
+                    titleText = `Categoria: ${this.currentView.value}`;
+                    break;
+                case 'packtype':
+                    filteredList = this.products.filter(p => p.packtype === this.currentView.value);
+                    titleText = `Confezione: ${this.currentView.value}`;
+                    break;
+            }
+
+            container.appendChild(this.createSectionHeading(titleText));
+            container.appendChild(this.createGrid(filteredList));
+        }
+    }
+
+    createSectionHeading(text) {
+        const h2 = document.createElement('h2');
+        h2.className = 'section-title';
+        h2.innerText = text;
+        return h2;
+    }
+
+    createGrid(productsList) {
+        const grid = document.createElement('div');
+        grid.className = 'grid-products';
+
+        if(productsList.length === 0) {
+            grid.innerHTML = `<p style="grid-column: 1/-1; text-align:center; color: var(--gray-text);">Nessun prodotto trovato in questa selezione.</p>`;
+            return grid;
+        }
+
+        productsList.forEach(prod => {
+            const isDisponibile = String(prod.disponibile) === 'true';
+            const isNovita = String(prod.novita) === 'true';
+
+            const card = document.createElement('div');
+            card.className = `product-card ${!isDisponibile ? 'out-of-stock' : ''}`;
+            
+            card.innerHTML = `
+                ${isNovita ? '<div class="badge-novita">Novità</div>' : ''}
+                <div class="product-img-container">
+                    <img src="${prod.foto || 'https://via.placeholder.com/200'}" alt="${prod.nome}" onerror="this.src='https://via.placeholder.com/200?text=Immagine+Non+Disponibile'">
+                </div>
+                <div class="product-info">
+                    <div class="product-brand">${prod.brand}</div>
+                    <div class="product-name">${prod.nome}</div>
+                    <div class="product-desc">${prod.descrizione}</div>
+                    <div class="product-meta">
+                        <span><i class="fa-solid fa-boxes-stacked"></i> ${prod.packtype}</span>
+                        <span>🏷️ ${prod.type}</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span class="product-price">${parseFloat(prod.prezzo).toFixed(2)}€</span>
+                        <span style="font-size:12px; font-weight:bold; color:${isDisponibile ? 'var(--success-green)' : 'var(--danger-red)'}">
+                            ${isDisponibile ? 'Disponibile' : 'Esaurito'}
+                        </span>
+                    </div>
+                </div>
+            `;
+            grid.appendChild(card);
         });
-        const result = await res.json();
-        if (result.success) {
-            closeModal();
-            productsData = [];
-            await loadProducts();
-            showSection('admin-view');
+        return grid;
+    }
+
+    // --- LOGICA DI GESTIONE CRUD (PANNELLO ADMIN) ---
+    renderAdminTable() {
+        const tbody = document.getElementById('admin-table-body');
+        tbody.innerHTML = this.products.map(p => `
+            <tr>
+                <td><strong>#${p.id}</strong></td>
+                <td><img src="${p.foto}" style="width:40px; height:40px; object-fit:contain; border-radius:4px;"></td>
+                <td>${p.brand}</td>
+                <td>${p.nome}</td>
+                <td>${parseFloat(p.prezzo).toFixed(2)}€</td>
+                <td>
+                    <div class="admin-actions-btns">
+                        <button class="btn-outline" style="padding:5px 10px; font-size:12px;" onclick="app.loadProductIntoForm('${p.id}')"><i class="fa-solid fa-pen"></i></button>
+                        <button class="btn-danger" style="padding:5px 10px; font-size:12px;" onclick="app.deleteProduct('${p.id}')"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    handleProductSubmit(e) {
+        e.preventDefault();
+        const id = document.getElementById('prod-id').value;
+        
+        const productData = {
+            id: id || 'P' + Date.now().toString().slice(-6), // Genera ID univoco se nuovo
+            brand: document.getElementById('prod-brand').value,
+            nome: document.getElementById('prod-nome').value,
+            descrizione: document.getElementById('prod-descrizione').value,
+            prezzo: document.getElementById('prod-prezzo').value,
+            disponibile: document.getElementById('prod-disponibile').checked,
+            novita: document.getElementById('prod-novita').checked,
+            type: document.getElementById('prod-type').value,
+            packtype: document.getElementById('prod-packtype').value,
+            foto: document.getElementById('prod-foto').value
+        };
+
+        if (id) {
+            // Edit esistente
+            this.syncWithSheets('update', productData);
+        } else {
+            // Crea nuovo
+            this.syncWithSheets('create', productData);
         }
-    } catch (err) {
-        alert("Errore nel salvataggio del record.");
+
+        this.resetProductForm();
+    }
+
+    loadProductIntoForm(id) {
+        const prod = this.products.find(p => String(p.id) === String(id));
+        if(!prod) return;
+
+        document.getElementById('form-title').innerText = "Modifica Prodotto #" + prod.id;
+        document.getElementById('prod-id').value = prod.id;
+        document.getElementById('prod-brand').value = prod.brand;
+        document.getElementById('prod-nome').value = prod.nome;
+        document.getElementById('prod-descrizione').value = prod.descrizione;
+        document.getElementById('prod-prezzo').value = prod.prezzo;
+        document.getElementById('prod-disponibile').checked = String(prod.disponibile) === 'true';
+        document.getElementById('prod-novita').checked = String(prod.novita) === 'true';
+        document.getElementById('prod-type').value = prod.type;
+        document.getElementById('prod-packtype').value = prod.packtype;
+        document.getElementById('prod-foto').value = prod.foto;
+
+        document.getElementById('btn-cancel-edit').classList.remove('hidden');
+        document.getElementById('btn-save').innerText = "Aggiorna Prodotto";
+        window.scrollTo({top: document.getElementById('admin-panel').offsetTop, behavior: 'smooth'});
+    }
+
+    deleteProduct(id) {
+        if(confirm(`Sei sicuro di voler eliminare il prodotto ID #${id}?`)) {
+            this.syncWithSheets('delete', { id: id });
+        }
+    }
+
+    resetProductForm() {
+        document.getElementById('product-form').reset();
+        document.getElementById('prod-id').value = '';
+        document.getElementById('form-title').innerText = "Aggiungi Nuovo Prodotto";
+        document.getElementById('btn-save').innerText = "Salva Prodotto";
+        document.getElementById('btn-cancel-edit').classList.add('hidden');
+    }
+
+    // Dati Mock usati in locale solo se il link Google Sheets fallisce (per testing immediato)
+    loadMockData() {
+        this.credentials = [{username: "admin", password: "password123"}];
+        this.products = [
+            {id: "1", brand: "Frizz", nome: "Goleador Cola", descrizione: "Caramelle gommose frizzanti gusto Cola.", prezzo: 0.20, disponibile: true, novita: true, packtype: "monopezzo", type: "gommose", foto: "https://images.unsplash.com/photo-1581798459219-318e76aecc7b?w=400"},
+            {id: "2", brand: "Frizz", nome: "Goleador Blue", descrizione: "Gusto lampone e fragola.", prezzo: 0.20, disponibile: true, novita: false, packtype: "monopezzo", type: "gommose", foto: ""},
+            {id: "3", brand: "Chupa", nome: "Chupa Chups Fragola", descrizione: "Il lollipop più famoso al mondo.", prezzo: 0.50, disponibile: true, novita: true, packtype: "lollipop", type: "lollipop", foto: ""},
+            {id: "4", brand: "Minty", nome: "Gum Forte", descrizione: "Gomma da masticare rinfrescante extra forte.", prezzo: 1.50, disponibile: false, novita: false, packtype: "stick", type: "gum", foto: ""}
+        ];
+        this.buildFilterMenus();
+        this.render();
     }
 }
 
-async function deleteProduct(id) {
-    if (!confirm("Confermi di voler rimuovere definitivamente questo prodotto?")) return;
-    
-    try {
-        const res = await fetch(API_URL, {
-            method: 'POST',
-            body: JSON.stringify({ action: 'delete', id: id })
-        });
-        const result = await res.json();
-        if (result.success) {
-            await loadProducts();
-            renderAdminTable();
-        }
-    } catch (err) {
-        alert("Errore durante l'eliminazione.");
-    }
-}
+// Inizializza l'applicazione all'avvio
+const app = new CatalogApp();
