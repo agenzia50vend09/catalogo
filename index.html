@@ -83,9 +83,14 @@
                             <input type="number" id="prod-prezzo" step="0.01" required>
                         </div>
                         <div class="form-group">
-                            <label>URL Foto</label>
-                            <input type="url" id="prod-foto" placeholder="https://example.com/image.jpg" required>
+                            <label>Foto <span style="color: var(--danger-red);">*</span></label>
+                            <input type="file" id="photo-file" accept="image/*" onchange="app.handlePhotoUpload(event)" required style="display: block; margin-bottom: 8px;">
+                            <input type="hidden" id="prod-foto">
                         </div>
+                    </div>
+                    <div id="photo-preview-container" class="hidden" style="margin: 15px 0; padding: 15px; background: var(--gray-bg); border-radius: 6px; text-align: center;">
+                        <p style="font-size: 12px; margin-bottom: 10px; color: var(--gray-text); font-weight: 600;">✓ Foto caricata:</p>
+                        <img id="photo-preview" src="" alt="Anteprima" style="max-width: 150px; max-height: 150px; border-radius: 4px;">
                     </div>
                     <div class="form-row">
                         <div class="form-group">
