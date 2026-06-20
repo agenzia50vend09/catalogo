@@ -420,3 +420,72 @@ footer {
     padding: 20px 0;
     font-size: 14px;
 }
+
+/* --- OTTIMIZZAZIONE PER DISPOSITIVI MOBILI (SMARTPHONE - LAYOUT ORIZZONTALE) --- */
+@media (max-width: 768px) {
+    
+    header {
+        padding: 25px 0 !important; /* Padding bilanciato per il layout compatto */
+        height: auto !important;
+        position: relative !important;
+    }
+
+    .header-container {
+        flex-direction: column !important; /* Logo sopra, menu sotto */
+        gap: 15px;                         /* Spazio tra il logo e la riga dei pulsanti */
+        text-align: center;
+    }
+
+    .logo {
+        font-size: 24px !important;        /* Logo leggermente più piccolo per i telefoni */
+    }
+
+    nav {
+        flex-direction: row !important;    /* FORZA I PULSANTI IN ORIZZONTALE */
+        flex-wrap: wrap;                   /* Se lo schermo è stretto, i pulsanti vanno a capo da soli senza rompere il layout */
+        justify-content: center;           /* Centra i pulsanti orizzontalmente sotto il logo */
+        width: 100%;
+        gap: 8px;                          /* Spazio compatto tra i pulsanti sulla stessa riga */
+    }
+
+    /* Regoliamo la dimensione dei pulsanti su mobile per farli stare comodamente in riga */
+    #btn-view-all, 
+    .dropdown .dropbtn, 
+    #btn-admin-gate {
+        padding: 8px 12px !important;      /* Pulsanti leggermente più compatti */
+        font-size: 14px !important;        /* Testo leggermente più piccolo per ottimizzare lo spazio */
+        width: auto !important;            /* Impedisce ai pulsanti di allargarsi al 100% */
+    }
+
+    /* Gestione dei menu a tendina (Dropdown) su mobile */
+    .dropdown-content {
+        position: absolute !important;     /* Torna a fluttuare sopra il catalogo per non spingere giù tutto */
+        left: 50%;
+        transform: translateX(-50%);       /* Centra il quadratino del menu rispetto al suo pulsante */
+        min-width: 140px;
+        background-color: var(--white) !important; /* Sfondo bianco standard per massima leggibilità quando si apre */
+        box-shadow: var(--shadow) !important;
+        border: 1px solid var(--border-color) !important;
+    }
+
+    .dropdown-content a {
+        color: var(--dark-blue) !important; /* Testo scuro su fondo bianco per il sottomenu aperto */
+        padding: 10px 12px !important;
+    }
+    
+    .dropdown-content a:hover {
+        background-color: var(--light-blue) !important;
+        color: var(--primary-blue) !important;
+    }
+
+    /* Ottimizzazione griglia prodotti per mobile */
+    .grid-products {
+        grid-template-columns: 1fr !important; /* Un prodotto alla volta sui telefoni per vederli bene */
+        gap: 20px;
+    }
+    
+    .section-title {
+        font-size: 22px !important;
+        text-align: center;                /* Centra anche i titoli dei Brand/Sezioni per coerenza */
+    }
+}
