@@ -489,3 +489,15 @@ footer {
         text-align: center;                /* Centra anche i titoli dei Brand/Sezioni per coerenza */
     }
 }
+
+/* Correzione visibilità pulsanti nella tabella admin */
+table .btn-outline {
+    color: var(--primary-blue) !important;
+    border: 2px solid var(--primary-blue) !important;
+    background-color: transparent !important;
+}
+
+table .btn-outline:hover {
+    color: var(--white) !important;
+    background-color: var(--primary-blue) !important;
+}
