@@ -316,18 +316,19 @@ class CatalogApp {
             return;
         }
         
+        // Cerca questo blocco dentro handleProductSubmit(e) in app.js:
         const productData = {
-            id: id || 'P' + Date.now().toString().slice(-6), // Genera ID univoco se nuovo
+            id: id || 'P' + Date.now().toString().slice(-6),
             brand: document.getElementById('prod-brand').value,
             nome: document.getElementById('prod-nome').value,
             descrizione: document.getElementById('prod-descrizione').value,
-            prezzo: document.getElementById('prod-prezzo').value,
+            prezzo: parseFloat(document.getElementById('prod-prezzo').value) || 0.00, // <--- MODIFICA QUESTA RIGA
             disponibile: document.getElementById('prod-disponibile').checked,
             novita: document.getElementById('prod-novita').checked,
             type: document.getElementById('prod-type').value,
             packtype: document.getElementById('prod-packtype').value,
             foto: fotoValue
-        };
+};
 
         if (id) {
             // Edit esistente
