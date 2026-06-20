@@ -95,7 +95,7 @@ class CatalogApp {
     // Costruzione dinamica dei sottomenu filtri in base ai valori ammessi
     buildFilterMenus() {
         const types = ['gum', 'caramella', 'lollipop', 'gommose'];
-        const packtypes = ['stick', 'box', 'monopezzo', 'lollipop', 'busta'];
+        const packtypes = ['stick', 'box', 'monopezzo', 'lollipop', 'busta', 'bottle'];
 
         const typeContainer = document.getElementById('dropdown-type');
         typeContainer.innerHTML = types.map(t => `<a href="#" onclick="app.setFilter('type', '${t}')">${t}</a>`).join('');
