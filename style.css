@@ -45,12 +45,28 @@ main {
 
 /* --- HEADER & NAVIGATION --- */
 header {
-    background-color: var(--white);
+    /* Il gradiente sopra serve a scurire la foto per leggere i testi bianchi. 
+       Cambia l'URL dopo la virgola con la tua foto preferita */
+    background-image: linear-gradient(rgba(0, 45, 98, 0.6), rgba(0, 45, 98, 0.75)), 
+                      url('https://media.engage.it/2020/2/perfetti_van_melle_gara_media_87137.jpg') !important;
+    
+    /* Forza il posizionamento e la copertura dell'immagine */
+    background-size: cover !important;
+    background-position: center center !important;
+    background-repeat: no-repeat !important;
+    
+    /* Rimuove eventuali colori di sfondo solidi ereditati prima */
+    background-color: transparent !important; 
+    
     box-shadow: var(--shadow);
     position: sticky;
     top: 0;
     z-index: 100;
-    border-bottom: 3px solid var(--primary-blue);
+    border-bottom: 3px solid var(--accent-blue);
+padding: 45px 0 !important; /* Aumentato il padding sopra e sotto (prima era 10px/15px) */
+    min-height: 160px;          /* Garantisce un'altezza minima generosa e professionale */
+    display: flex;
+    align-items: center;
 }
 
 .header-container {
@@ -60,14 +76,15 @@ header {
     padding: 15px 0;
 }
 
+/* Logo in bianco per risaltare sulla foto */
 .logo {
-    font-size: 24px;
-    font-weight: 700;
-    color: var(--primary-blue);
+    font-size: 45px;
+    font-weight: 800;
+    color: var(--white);
     cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.4);
 }
 
 nav {
@@ -86,25 +103,30 @@ button {
     transition: var(--transition);
 }
 
+/* Pulsanti di navigazione adattati allo sfondo scuro/fotografico */
 #btn-view-all, .dropbtn {
     background-color: transparent;
-    color: var(--dark-blue);
+    color: var(--white);
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 #btn-view-all:hover, .dropbtn:hover {
-    color: var(--primary-blue);
-    background-color: var(--light-blue);
+    color: var(--white);
+    background-color: rgba(255, 255, 255, 0.2);
 }
 
+/* Pulsante Admin modificato per integrarsi con la nuova grafica */
 .btn-outline {
-    background-color: transparent;
-    border: 2px solid var(--primary-blue);
-    color: var(--primary-blue);
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 2px solid var(--white);
+    color: var(--white);
+    backdrop-filter: blur(3px);
 }
 
 .btn-outline:hover {
-    background-color: var(--primary-blue);
-    color: var(--white);
+    background-color: var(--white);
+    color: var(--primary-blue);
+    text-shadow: none;
 }
 
 .btn-primary {
