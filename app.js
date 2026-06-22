@@ -122,6 +122,7 @@ class CatalogApp {
         this.render();
     }
 
+    // Gestione dell'anteprima in tempo reale all'inserimento dell'URL di Google Drive
     handleUrlPreview(url) {
         const previewContainer = document.getElementById('photo-preview-container');
         const previewImg = document.getElementById('photo-preview');
@@ -134,31 +135,12 @@ class CatalogApp {
         }
     }
 
-        // Controllo peso per non sovraccaricare Google Sheets (consigliato sotto i 2MB)
-        if (file.size > 2 * 1024 * 1024) {
-            alert('L\'immagine è troppo grande. Seleziona una foto inferiore a 2MB.');
-            return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            const base64Data = event.target.result;
-            
-            // Inserisce la stringa base64 direttamente nel campo hidden del form
-            document.getElementById('prod-foto').value = base64Data;
-            
-            // Mostra anteprima reale
-            document.getElementById('photo-preview').src = base64Data;
-            document.getElementById('photo-preview-container').classList.remove('hidden');
-        };
-        reader.readAsDataURL(file);
-    }
-
+    // Ritorna l'URL dell'immagine salvato o un placeholder SVG integrato in caso di errore/campo vuoto
     getPhotoUrl(photoData) {
         if (!photoData || photoData.trim() === "" || photoData.startsWith('photo_')) {
             return 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23f0f0f0" width="200" height="200"/%3E%3Ctext x="50%" y="50%" font-family="Arial" font-size="14" fill="%23999" text-anchor="middle" dy=".3em"%3ENessuna foto%3C/text%3E%3C/svg%3E';
         }
-        return photoData; // Restituisce direttamente l'URL di Google Drive inserito
+        return photoData; // Restituisce direttamente l'URL web/Google Drive
     }
 
     // --- RENDERING SEZIONE CATALOGO UTENTE ---
@@ -263,7 +245,7 @@ class CatalogApp {
         return grid;
     }
 
-    // --- LOGICA PANNELLO ADMIN CORRETTA ---
+    // --- LOGICA PANNELLO ADMIN ---
     renderAdminTable() {
         const tbody = document.getElementById('admin-table-body');
         if (!tbody) return;
@@ -315,7 +297,7 @@ class CatalogApp {
             novita: document.getElementById('prod-novita').checked,
             type: document.getElementById('prod-type').value,
             packtype: document.getElementById('prod-packtype').value,
-            foto: fotoValue.trim() // Salva l'URL direttamente nel foglio Google
+            foto: fotoValue.trim() // Salva la stringa dell'URL nel database remoto
         };
 
         if (id) {
@@ -344,11 +326,10 @@ class CatalogApp {
         document.getElementById('prod-novita').checked = String(prod.novita) === 'true';
         document.getElementById('prod-type').value = prod.type;
         document.getElementById('prod-packtype').value = prod.packtype;
+        
+        // Inserisce l'URL nel campo di testo e attiva l'anteprima visiva
         document.getElementById('prod-foto').value = prod.foto;
-
-        const photoUrl = this.getPhotoUrl(prod.foto);
-        document.getElementById('photo-preview').src = photoUrl;
-        document.getElementById('photo-preview-container').classList.remove('hidden');
+        this.handleUrlPreview(prod.foto);
 
         document.getElementById('btn-cancel-edit').classList.remove('hidden');
         document.getElementById('btn-save').innerText = "Aggiorna Prodotto";
@@ -364,7 +345,7 @@ class CatalogApp {
     resetProductForm() {
         document.getElementById('product-form').reset();
         document.getElementById('prod-id').value = '';
-        document.getElementById('prod-foto').value = ''; // Resetta il campo di testo URL
+        document.getElementById('prod-foto').value = '';
         document.getElementById('form-title').innerText = "Aggiungi Nuovo Prodotto";
         document.getElementById('btn-save').innerText = "Salva Prodotto";
         document.getElementById('btn-cancel-edit').classList.add('hidden');
