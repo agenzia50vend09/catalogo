@@ -10,15 +10,19 @@ class CatalogApp {
         this.init();
     }
 
-    async init() {
-        this.checkAdminSession();
+   async init() {
+        // Spostiamo il controllo della sessione admin DOPO il caricamento dei dati,
+        // così la tabella troverà l'array dei prodotti già pieno e pronto.
         await this.loadDataFromSheets();
         
-        // Generiamo i menu e renderizziamo SOLO SE il caricamento remoto ha avuto successo ed ha dati.
+        // Generiamo i menu e il catalogo clienti se i dati sono presenti
         if (this.products && this.products.length > 0) {
             this.buildFilterMenus();
             this.render();
         }
+
+        // Solo ora controlliamo se ripristinare il pannello Admin al refresh
+        this.checkAdminSession();
     }
 
     // Caricamento asincrono centralizzato da Google Fogli
