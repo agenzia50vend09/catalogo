@@ -112,7 +112,7 @@ class CatalogApp {
 
     buildFilterMenus() {
         const types = ['gum', 'caramella', 'lollipop', 'gommose'];
-        const packtypes = ['stick', 'box', 'monopezzo', 'lollipop', 'busta', 'bottle'];
+        const packtypes = ['stick', 'box', 'monopezzo', 'lollipop', 'busta', 'bottle', 'expo'];
 
         const typeContainer = document.getElementById('dropdown-type');
         if (typeContainer) {
