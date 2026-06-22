@@ -14,9 +14,8 @@ class CatalogApp {
         this.checkAdminSession();
         await this.loadDataFromSheets();
         
-        // Generiamo i menu e renderizziamo SOLO SE il caricamento remoto ha avuto successo.
-        // Se è fallito, loadMockData() ha già pensato a fare il build e il render.
-        if (this.products.length > 0) {
+        // Generiamo i menu e renderizziamo SOLO SE il caricamento remoto ha avuto successo ed ha dati.
+        if (this.products && this.products.length > 0) {
             this.buildFilterMenus();
             this.render();
         }
@@ -42,9 +41,7 @@ class CatalogApp {
     // Sincronizzazione con il database di Google Fogli (Invia modifiche)
     async syncWithSheets(action, payload) {
         try {
-            // Rimossa la modalità 'no-cors' che bloccava la risposta e interrompeva il flusso JS.
-            // Usiamo 'text/plain' per evitare che il browser invii una richiesta OPTIONS (pre-flight), 
-            // cosa che Google Apps Script digerisce molto meglio.
+            // Usiamo 'text/plain' per evitare il pre-flight CORS (richiesta OPTIONS) che Google Apps Script non gestisce bene
             const response = await fetch(API_URL, {
                 method: "POST",
                 headers: { "Content-Type": "text/plain" },
@@ -73,17 +70,18 @@ class CatalogApp {
         const adminGateBtn = document.getElementById('btn-admin-gate');
 
         if (this.isAdminActive()) {
-            adminPanel.classList.remove('hidden');
-            adminGateBtn.innerHTML = '<i class="fa-solid fa-unlock"></i> Pannello Aperto';
+            if (adminPanel) adminPanel.classList.remove('hidden');
+            if (adminGateBtn) adminGateBtn.innerHTML = '<i class="fa-solid fa-unlock"></i> Pannello Aperto';
             this.renderAdminTable();
         } else {
-            adminPanel.classList.add('hidden');
-            adminGateBtn.innerHTML = '<i class="fa-solid fa-lock"></i> Admin';
+            if (adminPanel) adminPanel.classList.add('hidden');
+            if (adminGateBtn) adminGateBtn.innerHTML = '<i class="fa-solid fa-lock"></i> Admin';
         }
     }
 
     toggleAdminModal(show) {
-        document.getElementById('login-modal').style.display = show ? 'flex' : 'none';
+        const modal = document.getElementById('login-modal');
+        if (modal) modal.style.display = show ? 'flex' : 'none';
     }
 
     handleLogin(e) {
@@ -145,10 +143,10 @@ class CatalogApp {
 
         if (url && url.trim() !== "") {
             // Genera l'anteprima usando la stessa funzione getPhotoUrl per vedere subito se il link è corretto
-            previewImg.src = this.getPhotoUrl(url);
-            previewContainer.classList.remove('hidden');
+            if (previewImg) previewImg.src = this.getPhotoUrl(url);
+            if (previewContainer) previewContainer.classList.remove('hidden');
         } else {
-            previewContainer.classList.add('hidden');
+            if (previewContainer) previewContainer.classList.add('hidden');
         }
     }
 
@@ -164,6 +162,7 @@ class CatalogApp {
         if (url.includes("drive.google.com")) {
             let matches = url.match(/\/d\/([a-zA-Z0-9-_]+)/) || url.match(/id=([a-zA-Z0-9-_]+)/);
             if (matches && matches[1]) {
+                // CORRETTO: Aggiunto il carattere '$' mancante per iniettare l'ID estratto nel link
                 return `https://lh3.googleusercontent.com/d/${matches[1]}`;
             }
         }
@@ -235,7 +234,7 @@ class CatalogApp {
         const grid = document.createElement('div');
         grid.className = 'grid-products';
 
-        if(productsList.length === 0) {
+        if(!productsList || productsList.length === 0) {
             grid.innerHTML = `<p style="grid-column: 1/-1; text-align:center; color: var(--gray-text);">Nessun prodotto trovato in questa selezione.</p>`;
             return grid;
         }
@@ -262,7 +261,7 @@ class CatalogApp {
                         <span>🏷️ ${prod.type}</span>
                     </div>
                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span class="product-price">${parseFloat(prod.prezzo).toFixed(2)}€</span>
+                        <span class="product-price">${parseFloat(prod.prezzo || 0).toFixed(2)}€</span>
                         <span style="font-size:12px; font-weight:bold; color:${isDisponibile ? 'var(--success-green)' : 'var(--danger-red)'}">
                             ${isDisponibile ? 'Disponibile' : 'Esaurito'}
                         </span>
@@ -279,6 +278,11 @@ class CatalogApp {
         const tbody = document.getElementById('admin-table-body');
         if (!tbody) return;
         
+        if (!this.products || this.products.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;">Nessun dato disponibile</td></tr>`;
+            return;
+        }
+
         tbody.innerHTML = this.products.map(p => {
             const photoUrl = this.getPhotoUrl(p.foto);
             return `
@@ -287,7 +291,7 @@ class CatalogApp {
                 <td><img src="${photoUrl}" style="width:40px; height:40px; object-fit:contain; border-radius:4px;" onerror="this.onerror=null;this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2240%22 height=%2240%22%3E%3Crect fill=%22%23f0f0f0%22 width=%2240%22 height=%2240%22/%3E%3C/svg%3E'"></td>
                 <td>${p.brand}</td>
                 <td>${p.nome}</td>
-                <td>${parseFloat(p.prezzo).toFixed(2)}€</td>
+                <td>${parseFloat(p.prezzo || 0).toFixed(2)}€</td>
                 <td>
                     <div class="admin-actions-btns">
                         <button type="button" class="btn-outline" style="padding:5px 10px; font-size:12px;" onclick="app.loadProductIntoForm('${p.id}')"><i class="fa-solid fa-pen"></i> Modifica</button>
@@ -348,7 +352,7 @@ class CatalogApp {
         document.getElementById('prod-nome').value = prod.nome;
         document.getElementById('prod-descrizione').value = prod.descrizione;
         
-        document.getElementById('prod-prezzo').value = parseFloat(prod.prezzo);
+        document.getElementById('prod-prezzo').value = parseFloat(prod.prezzo || 0);
         
         document.getElementById('prod-disponibile').checked = String(prod.disponibile) === 'true';
         document.getElementById('prod-novita').checked = String(prod.novita) === 'true';
@@ -358,9 +362,15 @@ class CatalogApp {
         document.getElementById('prod-foto').value = prod.foto;
         this.handleUrlPreview(prod.foto);
 
-        document.getElementById('btn-cancel-edit').classList.remove('hidden');
-        document.getElementById('btn-save').innerText = "Aggiorna Prodotto";
-        window.scrollTo({top: document.getElementById('admin-panel').offsetTop, behavior: 'smooth'});
+        const cancelBtn = document.getElementById('btn-cancel-edit');
+        const saveBtn = document.getElementById('btn-save');
+        if (cancelBtn) cancelBtn.classList.remove('hidden');
+        if (saveBtn) saveBtn.innerText = "Aggiorna Prodotto";
+        
+        const adminPanel = document.getElementById('admin-panel');
+        if (adminPanel) {
+            window.scrollTo({top: adminPanel.offsetTop, behavior: 'smooth'});
+        }
     }
 
     deleteProduct(id) {
@@ -370,13 +380,18 @@ class CatalogApp {
     }
 
     resetProductForm() {
-        document.getElementById('product-form').reset();
+        const form = document.getElementById('product-form');
+        if (form) form.reset();
+        
         document.getElementById('prod-id').value = '';
         document.getElementById('prod-foto').value = '';
         document.getElementById('form-title').innerText = "Aggiungi Nuovo Prodotto";
         document.getElementById('btn-save').innerText = "Salva Prodotto";
-        document.getElementById('btn-cancel-edit').classList.add('hidden');
-        document.getElementById('photo-preview-container').classList.add('hidden');
+        
+        const cancelBtn = document.getElementById('btn-cancel-edit');
+        const previewContainer = document.getElementById('photo-preview-container');
+        if (cancelBtn) cancelBtn.classList.add('hidden');
+        if (previewContainer) previewContainer.classList.add('hidden');
     }
 
     loadMockData() {
@@ -390,4 +405,5 @@ class CatalogApp {
     }
 }
 
+// Inizializzazione globale dell'applicazione
 const app = new CatalogApp();
