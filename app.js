@@ -1,5 +1,4 @@
 // --- CONFIGURAZIONE WEB APP GOOGLE SHEETS ---
-// Sostituisci questo URL con il link della tua Web App pubblicata tramite Google Apps Script
 const API_URL = "https://script.google.com/macros/s/AKfycbx778vC2rPCpLIHB7TnG1nsPUymQeUvKR_uNmfKYG-EzoO5-aTz-qkalxX1UXgObxZDFg/exec";
 
 class CatalogApp {
@@ -7,35 +6,15 @@ class CatalogApp {
         this.products = [];
         this.credentials = [];
         this.currentView = { type: 'home', value: null }; // home, all, brand, type, packtype
-        this.photoCache = {}; // Cache foto locali come Base64
         
         this.init();
     }
 
     async init() {
-        this.loadPhotoCache();
         this.checkAdminSession();
         await this.loadDataFromSheets();
         this.buildFilterMenus();
         this.render();
-    }
-
-    // Caricamento cache foto da localStorage
-    loadPhotoCache() {
-        const saved = localStorage.getItem('photoCache');
-        if (saved) {
-            try {
-                this.photoCache = JSON.parse(saved);
-            } catch (e) {
-                console.error('Errore nel caricamento cache foto:', e);
-                this.photoCache = {};
-            }
-        }
-    }
-
-    // Salvataggio cache foto in localStorage
-    savePhotoCache() {
-        localStorage.setItem('photoCache', JSON.stringify(this.photoCache));
     }
 
     // Caricamento asincrono centralizzato da Google Fogli
@@ -48,34 +27,40 @@ class CatalogApp {
         } catch (error) {
             console.error("Errore nel caricamento dati da Google Sheets:", error);
             alert("Impossibile connettersi al database di Google Fogli. Verranno usati dati locali simulati.");
-            this.loadMockData(); // Backup nel caso lo script non sia configurato
+            this.loadMockData();
         }
     }
 
     // Sincronizzazione con il database di Google Fogli (Invia modifiche)
     async syncWithSheets(action, payload) {
         try {
-            const response = await fetch(API_URL, {
+            await fetch(API_URL, {
                 method: "POST",
-                mode: "no-cors", // Necessario per le restrizioni CORS delle Web App di Google
+                mode: "no-cors", 
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ action, data: payload })
             });
-            // Dal momento che usiamo 'no-cors', dobbiamo riaggiornare la view locale dei dati
+            // Ricarica i dati aggiornati dal database remoto
             await this.loadDataFromSheets();
             this.render();
+            if (this.isAdminActive()) {
+                this.renderAdminTable();
+            }
         } catch (error) {
             console.error("Errore di sincronizzazione:", error);
         }
     }
 
+    isAdminActive() {
+        return localStorage.getItem('isAdminSession') === 'true';
+    }
+
     // Controllo se la sessione admin è salvata in localStorage
     checkAdminSession() {
-        const isAdmin = localStorage.getItem('isAdminSession');
         const adminPanel = document.getElementById('admin-panel');
         const adminGateBtn = document.getElementById('btn-admin-gate');
 
-        if (isAdmin === 'true') {
+        if (this.isAdminActive()) {
             adminPanel.classList.remove('hidden');
             adminGateBtn.innerHTML = '<i class="fa-solid fa-unlock"></i> Pannello Aperto';
             this.renderAdminTable();
@@ -85,7 +70,6 @@ class CatalogApp {
         }
     }
 
-    // Gestione Gestione Login Admin
     toggleAdminModal(show) {
         document.getElementById('login-modal').style.display = show ? 'flex' : 'none';
     }
@@ -112,7 +96,6 @@ class CatalogApp {
         this.checkAdminSession();
     }
 
-    // Costruzione dinamica dei sottomenu filtri in base ai valori ammessi
     buildFilterMenus() {
         const types = ['gum', 'caramella', 'lollipop', 'gommose'];
         const packtypes = ['stick', 'box', 'monopezzo', 'lollipop', 'busta', 'bottle'];
@@ -139,7 +122,7 @@ class CatalogApp {
         this.render();
     }
 
-    // Gestione caricamento foto locale
+    // Gestione caricamento foto locale e conversione permanente in Base64
     handlePhotoUpload(e) {
         const file = e.target.files[0];
         if (!file) return;
@@ -149,42 +132,39 @@ class CatalogApp {
             return;
         }
 
+        // Controllo peso per non sovraccaricare Google Sheets (consigliato sotto i 2MB)
+        if (file.size > 2 * 1024 * 1024) {
+            alert('L\'immagine è troppo grande. Seleziona una foto inferiore a 2MB.');
+            return;
+        }
+
         const reader = new FileReader();
         reader.onload = (event) => {
             const base64Data = event.target.result;
-            const photoId = 'photo_' + Date.now(); // ID univoco per la foto
             
-            // Salva la foto nel cache
-            this.photoCache[photoId] = base64Data;
-            this.savePhotoCache();
+            // Inserisce la stringa base64 direttamente nel campo hidden del form
+            document.getElementById('prod-foto').value = base64Data;
             
-            // Assegna l'ID al campo foto
-            document.getElementById('prod-foto').value = photoId;
-            
-            // Mostra anteprima
+            // Mostra anteprima reale
             document.getElementById('photo-preview').src = base64Data;
             document.getElementById('photo-preview-container').classList.remove('hidden');
-            
-            // Reset input file
-            document.getElementById('photo-file').value = '';
         };
         reader.readAsDataURL(file);
     }
 
-    // Ottieni la foto dal cache
-    getPhotoUrl(photoId) {
-        if (!photoId) {
+    // Ritorna la stringa Base64 salvata o un placeholder SVG integrato
+    getPhotoUrl(photoData) {
+        if (!photoData || photoData.trim() === "" || photoData.startsWith('photo_')) {
             return 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23f0f0f0" width="200" height="200"/%3E%3Ctext x="50%" y="50%" font-family="Arial" font-size="14" fill="%23999" text-anchor="middle" dy=".3em"%3ENessuna foto%3C/text%3E%3C/svg%3E';
         }
-        return this.photoCache[photoId] || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23f0f0f0" width="200" height="200"/%3E%3Ctext x="50%" y="50%" font-family="Arial" font-size="14" fill="%23999" text-anchor="middle" dy=".3em"%3EFoto non trovata%3C/text%3E%3C/svg%3E';
+        return photoData; // È già il codice Base64 fruibile
     }
 
-    // --- RENDERING DELLA SEZIONE CATALOGO UTENTE ---
+    // --- RENDERING SEZIONE CATALOGO UTENTE ---
     render() {
         const container = document.getElementById('main-content');
-        container.innerHTML = ''; // Svuota contenitore
+        container.innerHTML = ''; 
 
-        // 1. Sempre in evidenza in alto: NOVITA (Se siamo nella Homepage standard)
         if (this.currentView.type === 'home') {
             const novitaProducts = this.products.filter(p => String(p.novita) === 'true');
             if (novitaProducts.length > 0) {
@@ -192,7 +172,6 @@ class CatalogApp {
                 container.appendChild(this.createGrid(novitaProducts));
             }
 
-            // Sezione per ogni Brand con massimo 3 prodotti ciascuno
             const brands = [...new Set(this.products.map(p => p.brand))];
             brands.forEach(brand => {
                 const brandProducts = this.products.filter(p => p.brand === brand).slice(0, 3);
@@ -205,7 +184,6 @@ class CatalogApp {
                 container.appendChild(this.createGrid(brandProducts));
             });
         } 
-        // Viste filtrate (Tutto, Per Brand intero, Per Categoria, Per Packaging)
         else {
             let filteredList = [];
             let titleText = "";
@@ -284,9 +262,11 @@ class CatalogApp {
         return grid;
     }
 
-    // --- LOGICA DI GESTIONE CRUD (PANNELLO ADMIN) ---
+    // --- LOGICA PANNELLO ADMIN CORRETTA ---
     renderAdminTable() {
         const tbody = document.getElementById('admin-table-body');
+        if (!tbody) return;
+        
         tbody.innerHTML = this.products.map(p => {
             const photoUrl = this.getPhotoUrl(p.foto);
             return `
@@ -298,8 +278,8 @@ class CatalogApp {
                 <td>${parseFloat(p.prezzo).toFixed(2)}€</td>
                 <td>
                     <div class="admin-actions-btns">
-                        <button class="btn-outline" style="padding:5px 10px; font-size:12px;" onclick="app.loadProductIntoForm('${p.id}')"><i class="fa-solid fa-pen"></i></button>
-                        <button class="btn-danger" style="padding:5px 10px; font-size:12px;" onclick="app.deleteProduct('${p.id}')"><i class="fa-solid fa-trash"></i></button>
+                        <button type="button" class="btn-outline" style="padding:5px 10px; font-size:12px;" onclick="app.loadProductIntoForm('${p.id}')"><i class="fa-solid fa-pen"></i> Modifica</button>
+                        <button type="button" class="btn-danger" style="padding:5px 10px; font-size:12px;" onclick="app.deleteProduct('${p.id}')"><i class="fa-solid fa-trash"></i></button>
                     </div>
                 </td>
             </tr>
@@ -311,30 +291,35 @@ class CatalogApp {
         const id = document.getElementById('prod-id').value;
         const fotoValue = document.getElementById('prod-foto').value;
         
-        if (!fotoValue) {
-            alert('Devi caricare una foto per il prodotto');
+        if (!fotoValue || fotoValue.trim() === "") {
+            alert('Devi selezionare e attendere il caricamento della foto del prodotto.');
             return;
         }
         
-        // Cerca questo blocco dentro handleProductSubmit(e) in app.js:
+        const inputPrezzo = document.getElementById('prod-prezzo').value;
+        const parsedPrezzo = parseFloat(inputPrezzo);
+
+        if (isNaN(parsedPrezzo)) {
+            alert('Inserisci un prezzo numerico valido.');
+            return;
+        }
+
         const productData = {
             id: id || 'P' + Date.now().toString().slice(-6),
             brand: document.getElementById('prod-brand').value,
             nome: document.getElementById('prod-nome').value,
             descrizione: document.getElementById('prod-descrizione').value,
-            prezzo: parseFloat(document.getElementById('prod-prezzo').value) || 0.00, // <--- MODIFICA QUESTA RIGA
+            prezzo: parsedPrezzo, 
             disponibile: document.getElementById('prod-disponibile').checked,
             novita: document.getElementById('prod-novita').checked,
             type: document.getElementById('prod-type').value,
             packtype: document.getElementById('prod-packtype').value,
-            foto: fotoValue
-};
+            foto: fotoValue // Stringa Base64 completa salvata nel database remoto
+        };
 
         if (id) {
-            // Edit esistente
             this.syncWithSheets('update', productData);
         } else {
-            // Crea nuovo
             this.syncWithSheets('create', productData);
         }
 
@@ -350,14 +335,16 @@ class CatalogApp {
         document.getElementById('prod-brand').value = prod.brand;
         document.getElementById('prod-nome').value = prod.nome;
         document.getElementById('prod-descrizione').value = prod.descrizione;
-        document.getElementById('prod-prezzo').value = prod.prezzo;
+        
+        // Carica il prezzo puro convertito nel modulo
+        document.getElementById('prod-prezzo').value = parseFloat(prod.prezzo);
+        
         document.getElementById('prod-disponibile').checked = String(prod.disponibile) === 'true';
         document.getElementById('prod-novita').checked = String(prod.novita) === 'true';
         document.getElementById('prod-type').value = prod.type;
         document.getElementById('prod-packtype').value = prod.packtype;
         document.getElementById('prod-foto').value = prod.foto;
 
-        // Mostra anteprima della foto
         const photoUrl = this.getPhotoUrl(prod.foto);
         document.getElementById('photo-preview').src = photoUrl;
         document.getElementById('photo-preview-container').classList.remove('hidden');
@@ -376,6 +363,7 @@ class CatalogApp {
     resetProductForm() {
         document.getElementById('product-form').reset();
         document.getElementById('prod-id').value = '';
+        document.getElementById('prod-foto').value = '';
         document.getElementById('form-title').innerText = "Aggiungi Nuovo Prodotto";
         document.getElementById('btn-save').innerText = "Salva Prodotto";
         document.getElementById('btn-cancel-edit').classList.add('hidden');
@@ -383,19 +371,15 @@ class CatalogApp {
         document.getElementById('photo-file').value = '';
     }
 
-    // Dati Mock usati in locale solo se il link Google Sheets fallisce (per testing immediato)
     loadMockData() {
-        this.credentials = [{username: "admin", password: "password123"}];
+        this.credentials = [{username: "admin", password: "password"}];
         this.products = [
             {id: "1", brand: "Frizz", nome: "Goleador Cola", descrizione: "Caramelle gommose frizzanti gusto Cola.", prezzo: 0.20, disponibile: true, novita: true, packtype: "monopezzo", type: "gommose", foto: ""},
-            {id: "2", brand: "Frizz", nome: "Goleador Blue", descrizione: "Gusto lampone e fragola.", prezzo: 0.20, disponibile: true, novita: false, packtype: "monopezzo", type: "gommose", foto: ""},
-            {id: "3", brand: "Chupa", nome: "Chupa Chups Fragola", descrizione: "Il lollipop più famoso al mondo.", prezzo: 0.50, disponibile: true, novita: true, packtype: "lollipop", type: "lollipop", foto: ""},
-            {id: "4", brand: "Minty", nome: "Gum Forte", descrizione: "Gomma da masticare rinfrescante extra forte.", prezzo: 1.50, disponibile: false, novita: false, packtype: "stick", type: "gum", foto: ""}
+            {id: "3", brand: "Chupa", nome: "Chupa Chups Fragola", descrizione: "Il lollipop più famoso al mondo.", prezzo: 0.50, disponibile: true, novita: true, packtype: "lollipop", type: "lollipop", foto: ""}
         ];
         this.buildFilterMenus();
         this.render();
     }
 }
 
-// Inizializza l'applicazione all'avvio
 const app = new CatalogApp();
