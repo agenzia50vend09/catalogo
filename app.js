@@ -122,15 +122,17 @@ class CatalogApp {
         this.render();
     }
 
-    // Gestione caricamento foto locale e conversione permanente in Base64
-    handlePhotoUpload(e) {
-        const file = e.target.files[0];
-        if (!file) return;
+    handleUrlPreview(url) {
+        const previewContainer = document.getElementById('photo-preview-container');
+        const previewImg = document.getElementById('photo-preview');
 
-        if (!file.type.startsWith('image/')) {
-            alert('Seleziona un file immagine valido');
-            return;
+        if (url && url.trim() !== "") {
+            previewImg.src = url;
+            previewContainer.classList.remove('hidden');
+        } else {
+            previewContainer.classList.add('hidden');
         }
+    }
 
         // Controllo peso per non sovraccaricare Google Sheets (consigliato sotto i 2MB)
         if (file.size > 2 * 1024 * 1024) {
@@ -152,12 +154,11 @@ class CatalogApp {
         reader.readAsDataURL(file);
     }
 
-    // Ritorna la stringa Base64 salvata o un placeholder SVG integrato
     getPhotoUrl(photoData) {
         if (!photoData || photoData.trim() === "" || photoData.startsWith('photo_')) {
             return 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23f0f0f0" width="200" height="200"/%3E%3Ctext x="50%" y="50%" font-family="Arial" font-size="14" fill="%23999" text-anchor="middle" dy=".3em"%3ENessuna foto%3C/text%3E%3C/svg%3E';
         }
-        return photoData; // È già il codice Base64 fruibile
+        return photoData; // Restituisce direttamente l'URL di Google Drive inserito
     }
 
     // --- RENDERING SEZIONE CATALOGO UTENTE ---
@@ -292,7 +293,7 @@ class CatalogApp {
         const fotoValue = document.getElementById('prod-foto').value;
         
         if (!fotoValue || fotoValue.trim() === "") {
-            alert('Devi selezionare e attendere il caricamento della foto del prodotto.');
+            alert('Inserisci un URL valido per la foto del prodotto.');
             return;
         }
         
@@ -314,7 +315,7 @@ class CatalogApp {
             novita: document.getElementById('prod-novita').checked,
             type: document.getElementById('prod-type').value,
             packtype: document.getElementById('prod-packtype').value,
-            foto: fotoValue // Stringa Base64 completa salvata nel database remoto
+            foto: fotoValue.trim() // Salva l'URL direttamente nel foglio Google
         };
 
         if (id) {
@@ -363,12 +364,11 @@ class CatalogApp {
     resetProductForm() {
         document.getElementById('product-form').reset();
         document.getElementById('prod-id').value = '';
-        document.getElementById('prod-foto').value = '';
+        document.getElementById('prod-foto').value = ''; // Resetta il campo di testo URL
         document.getElementById('form-title').innerText = "Aggiungi Nuovo Prodotto";
         document.getElementById('btn-save').innerText = "Salva Prodotto";
         document.getElementById('btn-cancel-edit').classList.add('hidden');
         document.getElementById('photo-preview-container').classList.add('hidden');
-        document.getElementById('photo-file').value = '';
     }
 
     loadMockData() {
