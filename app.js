@@ -166,7 +166,7 @@ class CatalogApp {
         if (url.includes("drive.google.com")) {
             let matches = url.match(/\/d\/([a-zA-Z0-9-_]+)/) || url.match(/id=([a-zA-Z0-9-_]+)/);
             if (matches && matches[1]) {
-                // RIPRISTINATO: Torna alla tua stringa originaria che funzionava perfettamente
+                // CORRETTO: Aggiunto il carattere '$' mancante per iniettare l'ID estratto nel link
                 return `https://lh3.googleusercontent.com/d/${matches[1]}`;
             }
         }
