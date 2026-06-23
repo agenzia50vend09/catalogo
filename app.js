@@ -176,32 +176,39 @@ class CatalogApp {
 
     // --- RENDERING SEZIONE CATALOGO UTENTE ---
     // --- RENDERING SEZIONE CATALOGO UTENTE ---
+    // --- RENDERING SEZIONE CATALOGO UTENTE ---
     render() {
         const container = document.getElementById('main-content');
         if (!container) return;
         container.innerHTML = ''; 
 
-        // ORDINAMENTO AUTOMATICO: Mette sempre i prodotti novità all'inizio dell'elenco
-        // Trasforma il valore in stringa per sicurezza (visto che da Sheets a volte arriva come testo o come booleano)
-        const listaOrdinata = [...this.products].sort((a, b) => {
-            const aNovita = String(a.novita) === 'true' ? 1 : 0;
-            const bNovita = String(b.novita) === 'true' ? 1 : 0;
-            return bNovita - aNovita; // Ordina decrescente (1 prima di 0)
-        });
+        // Funzione di utilità locale per spingere le novità in testa a una qualsiasi sottolista
+        const ordinaPerNovita = (lista) => {
+            return [...lista].sort((a, b) => {
+                const aNovita = String(a.novita) === 'true' ? 1 : 0;
+                const bNovita = String(b.novita) === 'true' ? 1 : 0;
+                return bNovita - aNovita; // Le novità vanno in testa (1 prima di 0)
+            });
+        };
 
         if (this.currentView.type === 'home') {
-            // 1. Sezione Novità in Evidenza (generale)
-            const novitaProducts = listaOrdinata.filter(p => String(p.novita) === 'true');
+            // 1. Sezione Generale "Novità In Evidenza" in cima alla Home
+            const novitaProducts = this.products.filter(p => String(p.novita) === 'true');
             if (novitaProducts.length > 0) {
                 container.appendChild(this.createSectionHeading("✨ Novità In Evidenza"));
                 container.appendChild(this.createGrid(novitaProducts));
             }
 
-            // 2. Sezioni divise per Brand (i prodotti all'interno saranno già ordinati con le novità per prime)
-            const brands = [...new Set(listaOrdinata.map(p => p.brand))];
+            // 2. Sezioni divise per Brand (mantenendo l'ordine dei Brand nativo/strutturale)
+            // Estraiamo i brand dall'array originale NON ordinato per non spostare i blocchi
+            const brands = [...new Set(this.products.map(p => p.brand))];
+            
             brands.forEach(brand => {
-                // Prende i prodotti di questo brand (le novità appariranno per prime grazie al sort iniziale)
-                const brandProducts = listaOrdinata.filter(p => p.brand === brand).slice(0, 3);
+                // Prende tutti i prodotti di questo brand
+                const tuttiIProdottiDelBrand = this.products.filter(p => p.brand === brand);
+                
+                // Ordina i prodotti del brand mettendo le novità in testa, poi ne prende al massimo 3
+                const brandProducts = ordinaPerNovita(tuttiIProdottiDelBrand).slice(0, 3);
                 
                 const headingEl = document.createElement('h2');
                 headingEl.className = 'section-title';
@@ -215,22 +222,24 @@ class CatalogApp {
             let filteredList = [];
             let titleText = "";
 
-            // Applichiamo i filtri sulla lista già pre-ordinata con le novità in testa
+            // Nelle altre viste (All, Categorie, ecc.) mostriamo comunque le novità all'inizio
+            const listaGlobaleOrdinata = ordinaPerNovita(this.products);
+
             switch(this.currentView.type) {
                 case 'all':
-                    filteredList = listaOrdinata;
+                    filteredList = listaGlobaleOrdinata;
                     titleText = "Tutto il Catalogo Prodotti";
                     break;
                 case 'brand':
-                    filteredList = listaOrdinata.filter(p => p.brand === this.currentView.value);
+                    filteredList = listaGlobaleOrdinata.filter(p => p.brand === this.currentView.value);
                     titleText = `Prodotti del Brand: ${this.currentView.value}`;
                     break;
                 case 'type':
-                    filteredList = listaOrdinata.filter(p => p.type === this.currentView.value);
+                    filteredList = listaGlobaleOrdinata.filter(p => p.type === this.currentView.value);
                     titleText = `Categoria: ${this.currentView.value}`;
                     break;
                 case 'packtype':
-                    filteredList = listaOrdinata.filter(p => p.packtype === this.currentView.value);
+                    filteredList = listaGlobaleOrdinata.filter(p => p.packtype === this.currentView.value);
                     titleText = `Confezione: ${this.currentView.value}`;
                     break;
             }
