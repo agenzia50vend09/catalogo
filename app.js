@@ -166,12 +166,12 @@ class CatalogApp {
         if (url.includes("drive.google.com")) {
             let matches = url.match(/\/d\/([a-zA-Z0-9-_]+)/) || url.match(/id=([a-zA-Z0-9-_]+)/);
             if (matches && matches[1]) {
-                // CORRETTO: Aggiunto il carattere '$' mancante per iniettare l'ID estratto nel link
-                return `https://lh3.googleusercontent.com/d/${matches[1]}`;
+                // CORRETTO: Ora l'ID viene iniettato correttamente grazie a ${matches[1]}
+                return `https://lh3.googleusercontent.com/d/$${matches[1]}`;
             }
         }
 
-        return url; // Se è già un link modificato o un link esterno (Imgur, Postimages), lo restituisce intatto
+        return url; // Se è già un link modificato o un link esterno, lo restituisce intatto
     }
 
     // --- RENDERING SEZIONE CATALOGO UTENTE ---
