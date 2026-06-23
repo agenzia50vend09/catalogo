@@ -154,7 +154,7 @@ class CatalogApp {
         }
     }
 
-    // Ritorna l'URL dell'immagine salvato, convertendo automaticamente i link di Google Drive se necessario
+    // Ritorna l'URL dell'immagine salvato, convertendo automaticamente i link di Google Drive se necessario// Ritorna l'URL dell'immagine salvato, convertendo automaticamente i link di Google Drive se necessario
     getPhotoUrl(photoData) {
         if (!photoData || photoData.trim() === "" || photoData.startsWith('photo_')) {
             return 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23f0f0f0" width="200" height="200"/%3E%3Ctext x="50%" y="50%" font-family="Arial" font-size="14" fill="%23999" text-anchor="middle" dy=".3em"%3ENessuna foto%3C/text%3E%3C/svg%3E';
@@ -166,12 +166,12 @@ class CatalogApp {
         if (url.includes("drive.google.com")) {
             let matches = url.match(/\/d\/([a-zA-Z0-9-_]+)/) || url.match(/id=([a-zA-Z0-9-_]+)/);
             if (matches && matches[1]) {
-                // CORRETTO: Ora l'ID viene iniettato correttamente grazie a ${matches[1]}
-                return `https://lh3.googleusercontent.com/d/$${matches[1]}`;
+                // RIPRISTINATO: Torna alla tua stringa originaria che funzionava perfettamente
+                return `https://lh3.googleusercontent.com/d/${matches[1]}`;
             }
         }
 
-        return url; // Se è già un link modificato o un link esterno, lo restituisce intatto
+        return url; // Se è già un link modificato o un link esterno (Imgur, Postimages), lo restituisce intatto
     }
 
     // --- RENDERING SEZIONE CATALOGO UTENTE ---
