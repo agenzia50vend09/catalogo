@@ -343,8 +343,9 @@ class CatalogApp {
             nome: document.getElementById('prod-nome').value,
             descrizione: document.getElementById('prod-descrizione').value,
             prezzo: parsedPrezzo, 
-            disponibile: document.getElementById('prod-disponibile').checked,
-            novita: document.getElementById('prod-novita').checked,
+            // Trasformiamo i booleani in stringhe "true" / "false" prima di inviarli a Sheets
+            disponibile: String(document.getElementById('prod-disponibile').checked),
+            novita: String(document.getElementById('prod-novita').checked),
             type: document.getElementById('prod-type').value,
             packtype: document.getElementById('prod-packtype').value,
             foto: fotoValue.trim()
